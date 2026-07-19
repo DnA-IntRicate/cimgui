@@ -39,10 +39,10 @@ if FREETYPE_GENERATION then
 end
 
 if COMPILER == "gcc" or COMPILER == "clang" or COMPILER == "zig cc" then
-    CPRE = COMPILER..[[ -E -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_API="" -DIMGUI_IMPL_API=""  ]] .. CFLAGS
+    CPRE = COMPILER..[[ -E -dD -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_API="" -DIMGUI_IMPL_API=""  ]] .. CFLAGS
     CTEST = COMPILER.." --version"
 elseif COMPILER == "cl" then
-    CPRE = COMPILER..[[ /E /DIMGUI_DISABLE_OBSOLETE_FUNCTIONS /DIMGUI_DEBUG_PARANOID /DIMGUI_API="" /DIMGUI_IMPL_API="" ]] .. CFLAGS
+    CPRE = COMPILER..[[ /E /d1PP /DIMGUI_DISABLE_OBSOLETE_FUNCTIONS /DIMGUI_DEBUG_PARANOID /DIMGUI_API="" /DIMGUI_IMPL_API="" ]] .. CFLAGS
     CTEST = COMPILER
 else
     print("Working without compiler ")
@@ -120,10 +120,13 @@ local save_data = cpp2ffi.save_data
 local copyfile = cpp2ffi.copyfile
 local serializeTableF = cpp2ffi.serializeTableF
 
-local function func_header_impl_generate(FP)
+local function func_header_impl_generate(FP, defines)
 
     local outtab = {}
-    
+	--may be key sorting is not enough and declaration order needed 
+    cpp2ffi.table_do_sorted(defines, function(k,v)
+		table.insert(outtab,"#define "..k.." "..v.."\n")
+	end)
     -- for _,t in ipairs(FP.funcdefs) do
         -- if t.cimguiname then
             -- local cimf = FP.defsT[t.cimguiname]
@@ -286,6 +289,7 @@ local function cimgui_generation(parser)
 	
 
 	local  tdt = parser:generate_templates()
+	cpp2ffi.prtable("generate_templates",tdt)
 	local cstructsstr = outpre..tdt..outpost 
     
 	if gdefines.IMGUI_HAS_DOCK then
@@ -379,16 +383,15 @@ end
 local function parseImGuiHeader(header,names)
 	--prepare parser
 	local parser = cpp2ffi.Parser()
-	
+	parser.modulename = "cimgui"
 	parser.getCname = function(stname,funcname,namespace)
 		local pre = (stname == "") and (namespace and (namespace=="ImGui" and "ig" or namespace.."_") or "ig") or stname.."_"
 		return pre..funcname
 	end
 	parser.cname_overloads = cimgui_overloads
-	--parser.manuals = cimgui_manuals
 	parser:set_manuals(cimgui_manuals, "cimgui")
 	parser.skipped = cimgui_skipped
-	parser.UDTs = {"ImVec2","ImVec4","ImColor","ImRect"}
+	--parser.UDTs = {"ImVec2","ImVec4","ImColor","ImRect"}
 	--parser.gen_template_typedef = gen_template_typedef --use auto
 	parser.COMMENTS_GENERATION = COMMENTS_GENERATION
 	parser.CONSTRUCTORS_GENERATION = CONSTRUCTORS_GENERATION
@@ -398,7 +401,7 @@ local function parseImGuiHeader(header,names)
 	parser.custom_function_post = custom_function_post
 	parser.header_text_insert = header_text_insert
 	local defines = parser:take_lines(CPRE..header,names,COMPILER)
-	
+	--cpp2ffi.prtable("defines",defines)
 	return parser
 end
 --generation
@@ -438,14 +441,8 @@ structs_and_enums_table.templated_structs = parser1.templated_structs
 structs_and_enums_table.typenames = parser1.typenames
 structs_and_enums_table.templates_done = parser1.templates_done
 --structs_and_enums_table.nonPOD_used = parser1.nP_used
-
-save_data("./output/structs_and_enums.lua",serializeTableF(structs_and_enums_table))
-save_data("./output/typedefs_dict.lua",serializeTableF(parser1.typedefs_dict))
-
-----------save fundefs in definitions.lua for using in bindings
---DefsByStruct(pFP)
 set_defines(parser1.defsT) 
-save_data("./output/definitions.lua",serializeTableF(parser1.defsT))
+parser1:save_output()
 
 --check every function has ov_cimguiname
 -- for k,v in pairs(parser1.defsT) do
@@ -463,7 +460,11 @@ if ff then
 else
 	backends_folder = IMGUI_PATH .. "/backends/"
 end
- 
+local function getCname(stname,funcname, namespace)
+		if #stname == 0 then return funcname end --top level
+		local pre = stname.."_"
+		return pre..funcname
+	end
 local parser2
 
 if #implementations > 0 then
@@ -495,13 +496,15 @@ if #implementations > 0 then
 			end
 		end
 		parser2.cimgui_inherited =  dofile([[./output/structs_and_enums.lua]])
+		parser2.getCname = getCname
 		local defines = parser2:take_lines(CPRE..extra_defines..extra_includes..source, {locati}, COMPILER)
-		
+
 		local parser3 = cpp2ffi.Parser()
+		parser3.getCname = getCname
 		parser3.cimgui_inherited =  dofile([[./output/structs_and_enums.lua]])
-		parser3:take_lines(CPRE..extra_defines..extra_includes..source, {locati}, COMPILER)
+		local defines = parser3:take_lines(CPRE..extra_defines..extra_includes..source, {locati}, COMPILER)
 		parser3:do_parse()
-		local cfuncsstr = func_header_impl_generate(parser3) 
+		local cfuncsstr = func_header_impl_generate(parser3, defines) 
 		local cstructstr1,cstructstr2 = parser3.structs_and_enums[1], parser3.structs_and_enums[2]
 		local cstru = cstructstr1 .. cstructstr2
 		if cstru ~="" then
@@ -549,20 +552,9 @@ local function json_prepare(defs)
 end
 ---[[
 local json = require"json"
-save_data("./output/definitions.json",json.encode(json_prepare(parser1.defsT),{dict_on_empty={defaults=true}}))
---delete extra info for json
---structs_and_enums_table.templated_structs = nil
---structs_and_enums_table.typenames = nil
---structs_and_enums_table.templates_done = nil
-save_data("./output/structs_and_enums.json",json.encode(structs_and_enums_table))
-save_data("./output/typedefs_dict.json",json.encode(parser1.typedefs_dict))
 if parser2 then
     save_data("./output/impl_definitions.json",json.encode(json_prepare(parser2.defsT),{dict_on_empty={defaults=true}}))
 end
 --]]
--------------------copy C files to repo root
-copyfile("./output/cimgui.h", "../cimgui.h")
-copyfile("./output/cimgui.cpp", "../cimgui.cpp")
-os.remove("./output/cimgui.h")
-os.remove("./output/cimgui.cpp")
+
 print"all done!!"

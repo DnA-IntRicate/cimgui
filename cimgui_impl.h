@@ -60,6 +60,7 @@ struct SDL_Renderer;
 struct _SDL_GameController;
 typedef union SDL_Event SDL_Event;
 typedef enum { ImGui_ImplSDL2_GamepadMode_AutoFirst, ImGui_ImplSDL2_GamepadMode_AutoAll, ImGui_ImplSDL2_GamepadMode_Manual }ImGui_ImplSDL2_GamepadMode;
+typedef enum { ImGui_ImplSDL2_MouseCaptureMode_Enabled, ImGui_ImplSDL2_MouseCaptureMode_EnabledAfterDrag, ImGui_ImplSDL2_MouseCaptureMode_Disabled }ImGui_ImplSDL2_MouseCaptureMode;
 #endif //CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 CIMGUI_API float ImGui_ImplSDL2_GetContentScaleForDisplay(int display_index);
 CIMGUI_API float ImGui_ImplSDL2_GetContentScaleForWindow(SDL_Window* window);
@@ -72,6 +73,7 @@ CIMGUI_API bool ImGui_ImplSDL2_InitForVulkan(SDL_Window* window);
 CIMGUI_API void ImGui_ImplSDL2_NewFrame(void);
 CIMGUI_API bool ImGui_ImplSDL2_ProcessEvent(const SDL_Event* event);
 CIMGUI_API void ImGui_ImplSDL2_SetGamepadMode(ImGui_ImplSDL2_GamepadMode mode,struct _SDL_GameController** manual_gamepads_array,int manual_gamepads_count);
+CIMGUI_API void ImGui_ImplSDL2_SetMouseCaptureMode(ImGui_ImplSDL2_MouseCaptureMode mode);
 CIMGUI_API void ImGui_ImplSDL2_Shutdown(void);
 
 #endif
@@ -86,6 +88,7 @@ struct SDL_Renderer;
 struct SDL_Gamepad;
 typedef union SDL_Event SDL_Event;
 typedef enum { ImGui_ImplSDL3_GamepadMode_AutoFirst, ImGui_ImplSDL3_GamepadMode_AutoAll, ImGui_ImplSDL3_GamepadMode_Manual }ImGui_ImplSDL3_GamepadMode;
+typedef enum { ImGui_ImplSDL3_MouseCaptureMode_Enabled, ImGui_ImplSDL3_MouseCaptureMode_EnabledAfterDrag, ImGui_ImplSDL3_MouseCaptureMode_Disabled }ImGui_ImplSDL3_MouseCaptureMode;
 #endif //CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 CIMGUI_API bool ImGui_ImplSDL3_InitForD3D(SDL_Window* window);
 CIMGUI_API bool ImGui_ImplSDL3_InitForMetal(SDL_Window* window);
@@ -97,6 +100,7 @@ CIMGUI_API bool ImGui_ImplSDL3_InitForVulkan(SDL_Window* window);
 CIMGUI_API void ImGui_ImplSDL3_NewFrame(void);
 CIMGUI_API bool ImGui_ImplSDL3_ProcessEvent(const SDL_Event* event);
 CIMGUI_API void ImGui_ImplSDL3_SetGamepadMode(ImGui_ImplSDL3_GamepadMode mode,SDL_Gamepad** manual_gamepads_array,int manual_gamepads_count);
+CIMGUI_API void ImGui_ImplSDL3_SetMouseCaptureMode(ImGui_ImplSDL3_MouseCaptureMode mode);
 CIMGUI_API void ImGui_ImplSDL3_Shutdown(void);
 
 #endif
@@ -106,11 +110,14 @@ CIMGUI_API void ImGui_ImplSDL3_Shutdown(void);
 typedef struct ImGui_ImplVulkanH_Frame ImGui_ImplVulkanH_Frame;
 typedef struct ImGui_ImplVulkanH_Window ImGui_ImplVulkanH_Window;
 typedef struct ImGui_ImplVulkan_PipelineInfo ImGui_ImplVulkan_PipelineInfo;
+typedef struct ImVector_VkDynamicState {int Size;int Capacity;VkDynamicState* Data;} ImVector_VkDynamicState;
+
 struct ImGui_ImplVulkan_PipelineInfo
 {
     VkRenderPass RenderPass;
     uint32_t Subpass;
     VkSampleCountFlagBits MSAASamples;
+    ImVector_VkDynamicState ExtraDynamicStates;
     VkPipelineRenderingCreateInfoKHR PipelineRenderingCreateInfo;
     VkImageUsageFlags SwapChainImageUsage;
 };
@@ -167,16 +174,16 @@ typedef struct ImVector_ImGui_ImplVulkanH_FrameSemaphores {int Size;int Capacity
 
 struct ImGui_ImplVulkanH_Window
 {
-    int Width;
-    int Height;
-    VkSwapchainKHR Swapchain;
+    bool UseDynamicRendering;
     VkSurfaceKHR Surface;
     VkSurfaceFormatKHR SurfaceFormat;
     VkPresentModeKHR PresentMode;
-    VkRenderPass RenderPass;
-    bool UseDynamicRendering;
-    bool ClearEnable;
+    VkAttachmentDescription AttachmentDesc;
     VkClearValue ClearValue;
+    int Width;
+    int Height;
+    VkSwapchainKHR Swapchain;
+    VkRenderPass RenderPass;
     uint32_t FrameIndex;
     uint32_t ImageCount;
     uint32_t SemaphoreCount;
@@ -188,7 +195,10 @@ struct ImGui_ImplVulkanH_Window
 #ifndef CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 typedef ImVector<ImGui_ImplVulkanH_Frame> ImVector_ImGui_ImplVulkanH_Frame;
 typedef ImVector<ImGui_ImplVulkanH_FrameSemaphores> ImVector_ImGui_ImplVulkanH_FrameSemaphores;
+typedef ImVector<VkDynamicState> ImVector_VkDynamicState;
 #endif //CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#define IMGUI_IMPL_VULKAN_MINIMUM_SAMPLED_IMAGE_POOL_SIZE (8)
+#define IMGUI_IMPL_VULKAN_MINIMUM_SAMPLER_POOL_SIZE (2)
 CIMGUI_API void ImGui_ImplVulkanH_CreateOrResizeWindow(VkInstance instance,VkPhysicalDevice physical_device,VkDevice device,ImGui_ImplVulkanH_Window* wd,uint32_t queue_family,const VkAllocationCallbacks* allocator,int w,int h,uint32_t min_image_count,VkImageUsageFlags image_usage);
 CIMGUI_API void ImGui_ImplVulkanH_DestroyWindow(VkInstance instance,VkDevice device,ImGui_ImplVulkanH_Window* wd,const VkAllocationCallbacks* allocator);
 CIMGUI_API int ImGui_ImplVulkanH_GetMinImageCountFromPresentMode(VkPresentModeKHR present_mode);
@@ -198,7 +208,7 @@ CIMGUI_API VkPresentModeKHR ImGui_ImplVulkanH_SelectPresentMode(VkPhysicalDevice
 CIMGUI_API uint32_t ImGui_ImplVulkanH_SelectQueueFamilyIndex(VkPhysicalDevice physical_device);
 CIMGUI_API VkSurfaceFormatKHR ImGui_ImplVulkanH_SelectSurfaceFormat(VkPhysicalDevice physical_device,VkSurfaceKHR surface,const VkFormat* request_formats,int request_formats_count,VkColorSpaceKHR request_color_space);
 CIMGUI_API ImGui_ImplVulkanH_Window* ImGui_ImplVulkanH_Window_ImGui_ImplVulkanH_Window(void);
-CIMGUI_API VkDescriptorSet ImGui_ImplVulkan_AddTexture(VkSampler sampler,VkImageView image_view,VkImageLayout image_layout);
+CIMGUI_API VkDescriptorSet ImGui_ImplVulkan_AddTexture(VkImageView image_view,VkImageLayout image_layout);
 CIMGUI_API void ImGui_ImplVulkan_CreateMainPipeline(const ImGui_ImplVulkan_PipelineInfo* info);
 CIMGUI_API bool ImGui_ImplVulkan_Init(ImGui_ImplVulkan_InitInfo* info);
 CIMGUI_API bool ImGui_ImplVulkan_LoadFunctions(uint32_t api_version,PFN_vkVoidFunction(*loader_func)(const char* function_name,void* user_data),void* user_data);

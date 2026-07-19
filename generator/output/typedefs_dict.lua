@@ -57,6 +57,7 @@ local t={
   ImGuiDebugAllocInfo="struct ImGuiDebugAllocInfo",
   ImGuiDebugItemPathQuery="struct ImGuiDebugItemPathQuery",
   ImGuiDebugLogFlags="int",
+  ImGuiDemoMarkerCallback="void (*)(const char* file, int line, const char* section);",
   ImGuiDockContext="struct ImGuiDockContext",
   ImGuiDockNode="struct ImGuiDockNode",
   ImGuiDockNodeFlags="int",
