@@ -1,8 +1,8 @@
-#include "./imgui/imgui.h"
+#include <imgui.h>
 #ifdef IMGUI_ENABLE_FREETYPE
-#include "./imgui/misc/freetype/imgui_freetype.h"
+#include <misc/freetype/imgui_freetype.h>
 #endif
-#include "./imgui/imgui_internal.h"
+#include <imgui_internal.h>
 #include "cimgui.h"
 
 GENERATED_PLACEHOLDER
