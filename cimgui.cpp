@@ -4,10 +4,8 @@
 //with imgui_freetype.h api
 //docking branch
 
-#include <imgui.h>
 #include <imgui_internal.h>
 #include "cimgui.h"
-
 
 
 static inline ImColor ConvertToCPP_ImColor(const ImColor_c& src)
@@ -6450,7 +6448,7 @@ CIMGUI_API bool igImFontAtlasGetMouseCursorTexData(ImFontAtlas* atlas,ImGuiMouse
 
 
 
-/////////////////////////////manual written functions
+///////////////////////// Hand written functions /////////////////////////
 
 CIMGUI_API void ImGuiTextBuffer_appendf(ImGuiTextBuffer *self, const char *fmt, ...)
 {

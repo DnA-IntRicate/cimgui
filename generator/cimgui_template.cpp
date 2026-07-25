@@ -1,14 +1,12 @@
 
-#include <imgui.h>
 #include <imgui_internal.h>
 #include "cimgui.h"
-
 
 
 #include "auto_funcs.cpp"
 
 
-/////////////////////////////manual written functions
+///////////////////////// Hand written functions /////////////////////////
 
 CIMGUI_API void ImGuiTextBuffer_appendf(ImGuiTextBuffer *self, const char *fmt, ...)
 {

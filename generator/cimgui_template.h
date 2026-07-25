@@ -1,3 +1,4 @@
+
 #ifndef CIMGUI_INCLUDED
 #define CIMGUI_INCLUDED
 #include <stdio.h>
@@ -27,19 +28,18 @@
 #define CIMGUI_API EXTERN API
 #define CONST const
 
-
 #ifdef _MSC_VER
 typedef unsigned __int64 ImU64;
 #else
-//typedef unsigned long long ImU64;
+// typedef unsigned long long ImU64;
 #endif
 
 #ifndef CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include <imgui.h>
 #ifdef IMGUI_ENABLE_FREETYPE
 #include <misc/freetype/imgui_freetype.h>
 #endif
 #endif
-
 
 #ifdef CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "imgui_structs.h"
@@ -53,12 +53,13 @@ PLACE_STRUCTS_C
 
 #include "auto_funcs.h"
 
-/////////////////////////hand written functions
-//no appendfV
+///////////////////////// Hand written functions /////////////////////////
+
+// No appendfV
 CIMGUI_API void ImGuiTextBuffer_appendf(ImGuiTextBuffer *self, const char *fmt, ...);
-//for getting FLT_MAX in bindings
+// For getting FLT_MAX in bindings
 CIMGUI_API float igGET_FLT_MAX(void);
-//for getting FLT_MIN in bindings
+// For getting FLT_MIN in bindings
 CIMGUI_API float igGET_FLT_MIN(void);
 
 
@@ -72,8 +73,4 @@ CIMGUI_API void ImGuiPlatformIO_Set_Platform_GetWindowPos(ImGuiPlatformIO* platf
 CIMGUI_API void ImGuiPlatformIO_Set_Platform_GetWindowSize(ImGuiPlatformIO* platform_io, void(*user_callback)(ImGuiViewport* vp, ImVec2* out_size));
 #endif
 
-#endif //CIMGUI_INCLUDED
-
-
-
-
+#endif // CIMGUI_INCLUDED
